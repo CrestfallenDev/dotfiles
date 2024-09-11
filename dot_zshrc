@@ -1,0 +1,70 @@
+
+# Homebrew added by Self Service Thu Jun 20 16:50:57 BST 2024
+eval $(/opt/homebrew/bin/brew shellenv)
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# NetSkope workarounds
+NETSKOPE_ROOT="/Library/Application Support/Netskope/STAgent"
+NETSKOPE_CA="$NETSKOPE_ROOT/data/nscacert.pem"
+NETSKOPE_BUNDLE="$HOME/.cache/netskope_bundle.pem"
+cat /etc/ssl/cert.pem "$NETSKOPE_CA" > "$NETSKOPE_BUNDLE"
+export AWS_CA_BUNDLE="$NETSKOPE_BUNDLE"
+export NODE_EXTRA_CA_CERTS="$NETSKOPE_CA"
+
+# Additions to path
+eval "$(/Users/james/.local/bin/mise activate zsh)"
+eval "$(pyenv init --path)"
+
+alias code
+function env_auth () {
+        env=$1
+        env=env + 0
+        gcloud container clusters get-credentials cluster0 --zone europe-west2-b --project inf-$env-informer0
+}
+
+function kinf () {
+        target=$1
+        entry=$2
+
+        case $entry in
+                "python")
+                        command="python manage.py shell"
+                ;;
+                "bash")
+                        command="bash"
+                ;;
+                *)
+                        echo "unknown entry; $entry"
+                        exit 1
+                ;;
+        esac
+
+        case $target in 
+                "redirect")
+                        namespace=worker0
+                        pod=redirectworker
+                ;;
+                "response")
+                        namespace=worker0
+                        pod=responseworker
+                ;;
+                "api")
+                        namespace=service0
+                        pod=api
+                ;;
+                *)
+                        echo "unknown target; $target"
+                        exit 1
+                ;;
+        esac
+
+        api=$(kubectl get pods --namespace=$namespace | grep informer-$pod | cut -d/ -f1  | head -1 | cut -d ' ' -f 1)
+        kubectl exec -ti $api --namespace=$namespace $command
+}
+
+alias flower_proxy="kubectl port-forward deployment/flower 5555:5555 --namespace service0"
+alias kdebug="kubectl run --rm -it --image ubuntu kdebug /bin/bash" 
+alias IAC="cd ~/work/iac"
